@@ -1,0 +1,309 @@
+name: Build SariMakeup APK
+
+# Simpan file ini sebagai .github/workflows/build.yml di repo GitHub.
+# Setelah commit, build jalan otomatis. APK muncul di tab Releases.
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate project
+        run: |
+          mkdir -p $(dirname settings.gradle.kts)
+          cat > settings.gradle.kts <<'EOF'
+          pluginManagement {
+              repositories { google(); mavenCentral(); gradlePluginPortal() }
+          }
+          dependencyResolutionManagement {
+              repositories { google(); mavenCentral() }
+          }
+          rootProject.name = "SariMakeup"
+          include(":app")
+          EOF
+          mkdir -p $(dirname build.gradle.kts)
+          cat > build.gradle.kts <<'EOF'
+          plugins {
+              id("com.android.application") version "8.5.2" apply false
+              id("org.jetbrains.kotlin.android") version "1.9.24" apply false
+          }
+          EOF
+          mkdir -p $(dirname gradle.properties)
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx2g
+          android.useAndroidX=true
+          EOF
+          mkdir -p $(dirname app/build.gradle.kts)
+          cat > app/build.gradle.kts <<'EOF'
+          plugins {
+              id("com.android.application")
+              id("org.jetbrains.kotlin.android")
+          }
+
+          android {
+              namespace = "com.zuhud.sarimakeup"
+              compileSdk = 34
+              defaultConfig {
+                  applicationId = "com.zuhud.sarimakeup"
+                  minSdk = 24
+                  targetSdk = 34
+                  versionCode = 1
+                  versionName = "1.0"
+              }
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+              kotlinOptions { jvmTarget = "17" }
+          }
+          EOF
+          mkdir -p $(dirname app/src/main/AndroidManifest.xml)
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application
+                  android:label="SariMakeup"
+                  android:icon="@android:drawable/ic_menu_gallery"
+                  android:hardwareAccelerated="true"
+                  android:theme="@android:style/Theme.Material.Light.NoActionBar">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:screenOrientation="portrait">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+          mkdir -p $(dirname app/src/main/java/com/zuhud/sarimakeup/MainActivity.kt)
+          cat > app/src/main/java/com/zuhud/sarimakeup/MainActivity.kt <<'EOF'
+          package com.zuhud.sarimakeup
+
+          import android.annotation.SuppressLint
+          import android.app.Activity
+          import android.os.Bundle
+          import android.view.View
+          import android.webkit.WebView
+
+          class MainActivity : Activity() {
+              private lateinit var web: WebView
+
+              @SuppressLint("SetJavaScriptEnabled")
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  web = WebView(this)
+                  web.settings.javaScriptEnabled = true
+                  web.settings.domStorageEnabled = true
+                  web.setBackgroundColor(0xFF3D0A2A.toInt())
+                  setContentView(web)
+                  web.loadUrl("file:///android_asset/index.html")
+              }
+
+              @Suppress("DEPRECATION")
+              @Deprecated("Deprecated in Java")
+              override fun onBackPressed() {
+                  web.evaluateJavascript("back()") { r ->
+                      if (r != null && r.contains("exit")) finish()
+                  }
+              }
+
+              @Suppress("DEPRECATION")
+              override fun onWindowFocusChanged(hasFocus: Boolean) {
+                  super.onWindowFocusChanged(hasFocus)
+                  if (hasFocus) {
+                      window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+                          View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                          View.SYSTEM_UI_FLAG_FULLSCREEN or
+                          View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                  }
+              }
+          }
+          EOF
+          mkdir -p $(dirname app/src/main/assets/index.html)
+          cat > app/src/main/assets/index.html <<'EOF'
+          <!DOCTYPE html>
+          <html lang="id"><head><meta charset="utf-8">
+          <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+          <title>SariMakeup</title>
+          <style>
+          :root{--bg:#fff5f8;--pn:#fff;--tx:#3a1f2b;--ac:#d6336c;--mu:#8a6a76;--bd:#f0d4de;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+          @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1015;--pn:#26161d;--tx:#fbe9ef;--ac:#ff7aa8;--mu:#c79aab;--bd:#4a2c38}}
+          :root[data-theme="dark"]{--bg:#1b1015;--pn:#26161d;--tx:#fbe9ef;--ac:#ff7aa8;--mu:#c79aab;--bd:#4a2c38}
+          html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+          body{height:100%;margin:0;background:var(--bg);color:var(--tx);font:14px system-ui,-apple-system,sans-serif;overflow:hidden;position:relative}
+          .s{position:absolute;inset:0;display:none;flex-direction:column}.s.on{display:flex}
+          button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+          #t{align-items:center;justify-content:center;background:linear-gradient(135deg,#3d0a2a,#8a1c4d,#d4af37,#8a1c4d);background-size:300% 300%;animation:bgm 9s ease infinite;overflow:hidden;color:#fff}
+          #t:before{content:"";position:absolute;inset:0;background:radial-gradient(circle,#fff8 0 1.5px,#0000 2px) 0 0/46px 46px,radial-gradient(circle,#ffe9a8aa 0 1px,#0000 2px) 23px 23px/46px 46px;animation:tw 3s ease-in-out infinite alternate}
+          #t h1{font:700 clamp(40px,14vw,76px) Georgia,serif;margin:0;display:flex;position:relative}
+          #t h1 span{display:inline-block;animation:fl 2.4s ease-in-out infinite;text-shadow:0 0 18px #ffd86b99,0 3px 0 #0006}
+          .go{position:relative;margin-top:28px;padding:13px 38px;border-radius:30px;background:linear-gradient(#ffe08a,#d4af37);color:#4a2300;font-weight:700;font-size:17px;box-shadow:0 6px 20px #0006}
+          .cr{position:absolute;right:10px;bottom:8px;font-size:10px;opacity:.75}
+          @keyframes bgm{50%{background-position:100% 100%}}@keyframes tw{to{opacity:.35}}@keyframes fl{50%{transform:translateY(-9px)}}
+          @keyframes bob{50%{transform:translateY(-3px)}}.bob{animation:bob 3s ease-in-out infinite}
+          @media(prefers-reduced-motion:reduce){*{animation:none!important}}
+          #c{padding:16px;gap:12px;overflow:auto}#c h2{margin:4px 0;text-align:center;font:700 22px Georgia,serif}
+          .gr{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cd{background:var(--pn);border:1px solid var(--bd);border-radius:16px;padding:6px;text-align:center}.cd svg{width:100%;height:150px}.cd b{display:block}.cd small{color:var(--mu)}
+          .tp{display:flex;align-items:center;gap:8px;padding:8px 10px}.tp b{flex:1}
+          .bt{padding:7px 12px;border-radius:14px;background:var(--pn);border:1px solid var(--bd)}.bt.p{background:var(--ac);color:#fff;border-color:var(--ac);font-weight:700}
+          #sg{flex:1;min-height:0;position:relative;overflow:hidden}#sv,#sv svg{width:100%;height:100%}
+          #bn{position:absolute;left:10px;top:8px;font-size:11px;color:#fff;background:#0005;padding:3px 9px;border-radius:10px}
+          .pn{background:var(--pn);border-top:1px solid var(--bd);padding:6px 0 8px}
+          .rw{display:flex;gap:8px;overflow-x:auto;padding:5px 10px;scrollbar-width:none}.rw::-webkit-scrollbar{display:none}
+          #tb button{flex:none;min-width:54px;padding:5px 6px;border-radius:12px;font-size:11px;line-height:1.25;border:1px solid var(--bd)}#tb .a{background:var(--ac);color:#fff}
+          #cl i{flex:none;width:30px;height:30px;border-radius:50%;border:2px solid #fff8;box-shadow:0 0 0 1px var(--bd)}#cl i.a{box-shadow:0 0 0 3px var(--ac)}
+          #sl b{flex:none;padding:7px 11px;border-radius:12px;border:1px solid var(--bd);font-weight:500;text-align:center}#sl b.a{background:var(--ac);color:#fff}#sl small{display:block;font-size:9px;opacity:.7}
+          .b0{background:radial-gradient(circle at 20% 25%,#fff9 0 40px,#0000 41px),radial-gradient(circle at 80% 40%,#fff6 0 60px,#0000 61px),linear-gradient(160deg,#ffd6e7,#e6d4ff 60%,#fff0f6)}
+          .b1{background:repeating-radial-gradient(circle at 0 0,#0000 0 13px,#d4af3755 14px 15px,#0000 16px 28px),linear-gradient(#8a0f22,#3d0710)}
+          .b2{background:radial-gradient(circle at 50% 30%,#d4af3799,#0000 55%),radial-gradient(circle,#ffe9a8cc 0 1px,#0000 2px) 0 0/34px 34px,linear-gradient(#1a1206,#4a3510 60%,#8a6a1c)}
+          .b3{background:radial-gradient(circle at 50% 62%,#fff2b0 0 34px,#0000 36px),linear-gradient(#3a2a6a,#d9487a 55%,#ffb347 78%,#1f6a8a 79%)}
+          #r{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;padding:16px;z-index:9}#r.on{display:flex}
+          .rc{background:var(--pn);border-radius:20px;padding:18px;max-width:380px;width:100%;max-height:92%;overflow:auto;text-align:center}
+          .sc{font:700 64px Georgia,serif;color:var(--ac);line-height:1}.br{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:12px;text-align:left}.br span{width:96px}.br div{flex:1;height:8px;background:var(--bd);border-radius:6px;overflow:hidden}.br i{display:block;height:100%;background:linear-gradient(90deg,#ff8fb1,#d4af37);width:0;transition:width 1s}
+          .rc p{color:var(--mu);margin:12px 0}.rc .bt{margin:4px}
+          </style></head><body>
+          <div class="s on" id="t"><h1 id="tl"></h1><div style="position:relative;opacity:.85;margin-top:6px">Salon Impian Nusantara</div><button class="go" onclick="show('c')">Mulai Main</button><div class="cr">game by zuhud</div></div>
+          <div class="s" id="c"><h2>Pilih Karakter</h2><div class="gr" id="gr"></div></div>
+          <div class="s" id="g"><div class="tp"><button class="bt" onclick="back()">←</button><b id="nm"></b><button class="bt" onclick="nb()">🖼 Latar</button><button class="bt p" onclick="judge()">✨ Nilai</button></div><div id="sg"><span id="bn"></span><div id="sv"></div></div><div class="pn"><div class="rw" id="tb"></div><div class="rw" id="cl"></div><div class="rw" id="sl"></div></div></div>
+          <div id="r"><div class="rc" id="rc"></div></div>
+          <script>
+          const $=s=>document.querySelector(s),W='#ffffff',K='#000000',GD='#d4af37';
+          const hx=h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16));
+          const mx=(a,b,t)=>{const A=hx(a),B=hx(b);return'#'+A.map((v,i)=>Math.round(v+(B[i]-v)*t).toString(16).padStart(2,'0')).join('')};
+          const hue=h=>{const[r,g,b]=hx(h).map(v=>v/255),M=Math.max(r,g,b),m=Math.min(r,g,b),d=M-m;if(!d)return 0;const H=M==r?((g-b)/d)%6:M==g?(b-r)/d+2:(r-g)/d+4;return(H*60+360)%360};
+          const hd=(a,b)=>{const d=Math.abs(hue(a)-hue(b));return d>180?360-d:d};
+          const P={skin:['#fbe0c8','#f3cfa6','#e5b98c','#cf9a6b','#b97d4f','#8f5a37','#6f4226','#4f2f1c'],hair:['#1b1210','#3a2418','#5a3a22','#7a4a2a','#a8672e','#c9a15a','#7a1f2b','#7a3d9a','#2a4f8a','#e9c9d6'],brow:['#1b1210','#3a2418','#5a3a22','#7a4a2a','#8a5a3a'],eye:['#8a5a3a','#c9a15a','#b0445a','#7a3d9a','#2f6b6b','#2a4f8a','#d98aa0','#3a2a2a'],bl:['#ff8fa3','#f26d8a','#ff9d7a','#e86a5a','#d98aa0','#c06080'],lip:['#c8102e','#e0507a','#b03a48','#d9747a','#8a2a3a','#f08a6a','#9a3b7a','#6a1a2a'],dress:['#b3182b','#d4a017','#1f6b4a','#6a2a8a','#0f3d73','#e87aa0','#f2e9d8','#0a0a0a','#e07b1a','#2a8a9a'],mt:['#d4af37','#e5e4e2','#e0a890','#b76e79','#3a3a3a'],gen:['#d4af37','#e5e4e2','#b3182b','#0f3d73','#e87aa0','#f2e9d8','#0a0a0a','#6a2a8a']};
+          const DN=['Kebaya Jawa','Baju Bodo Bugis','Kurung Minang','Kebaya Bali','Kebaya Sunda','Ulos Batak','Encim Betawi','Dayak Manik'];
+          const DP=[[2,58,0],[1,62,1],[2,66,2],[0,56,3],[2,54,0],[1,60,4],[2,52,5],[0,50,5]];
+          const C=[['face','Wajah','🧴',['Natural','Glowing','Matte'],P.skin],['brow','Alis','〰️',['Lurus','Melengkung','Tebal','Tipis'],P.brow],['eye','Mata','👁️',['Natural','Smokey','Cat Eye','Glam'],P.eye],['cheek','Pipi','🌸',['Tipis','Sedang','Merona'],P.bl],['lip','Bibir','💋',['Natural','Gradasi','Glossy','Matte'],P.lip],['hair','Rambut','💇',['Lurus Panjang','Bergelombang','Bob Pendek','Ponytail','Sanggul Modern','Kepang Samping','Keriting Volume','Pixie','Kuncir Dua','Poni Panjang'],P.hair],['dress','Baju Daerah','👘',DN,P.dress],['neck','Kalung','📿',['Tanpa','Rantai Emas','Mutiara','Choker','Liontin'],P.mt],['wrist','Gelang','⌚',['Tanpa','Bangle','Bangle Tebal','Rantai','Batu'],P.mt],['glass','Kacamata','🕶️',['Tanpa','Bulat','Cat Eye','Kotak','Aviator'],P.gen],['shoe','Sepatu','👠',['Tanpa','Hak Tinggi','Flat','Sandal Tali','Boots'],P.gen],['glove','Sarung Tangan','🧤',['Tanpa','Pendek','Opera','Renda'],P.gen],['extra','Tambahan','👜',['Tanpa','Kipas Tangan','Tas Tangan','Tiara','Bunga Rambut','Anting Mutiara'],P.gen]];
+          const BR=['Kencana','Lumiere','Nusa Luxe','Batik Ayu','Permata','Dewi Mode'],BK=['dress','neck','wrist','glass','shoe','glove','extra'];
+          const CH=[{n:'Sari',o:'Jawa Tengah',sk:2,rx:50,ry:60,hs:0,hc:0,es:20},{n:'Ayu',o:'Sunda',sk:1,rx:47,ry:62,hs:4,hc:1,es:19},{n:'Dewi',o:'Minang',sk:3,rx:52,ry:58,hs:1,hc:0,es:21},{n:'Laras',o:'Bugis',sk:4,rx:48,ry:61,hs:9,hc:2,es:20},{n:'Putri',o:'Bali',sk:5,rx:51,ry:59,hs:3,hc:1,es:22}];
+          const BGN=['Elegan Feminim','Indonesia','Gold Luxury','Senja Pantai'];
+          const PT=[c=>`<circle cx="7" cy="7" r="3.5" fill="none" stroke="${c}" stroke-width="1.4"/><path d="M0 0L3 3M14 0L11 3M0 14L3 11M14 14L11 11" stroke="${c}"/>`,c=>`<rect width="4" height="14" fill="${c}"/>`,c=>`<path d="M0 14L14 0" stroke="${GD}" stroke-width="2"/>`,c=>`<circle cx="7" cy="7" r="1.2" fill="${GD}"/>`,c=>`<rect width="14" height="3" fill="${GD}"/><rect y="7" width="14" height="1.5" fill="${c}"/>`,c=>`<circle cx="3" cy="3" r="1.8" fill="${GD}"/><circle cx="10" cy="10" r="1.8" fill="#e87aa0"/>`];
+          const HB=[()=>`<path d="M96 140C90 70 210 70 204 140L212 345L88 345Z"/>`,
+          ()=>`<path d="M96 140C90 70 210 70 204 140C222 200 196 250 214 300C220 330 196 345 176 338L124 338C104 345 80 330 86 300C104 250 78 200 96 140Z"/>`,
+          ()=>`<path d="M94 145C88 72 212 72 206 145L210 215Q150 232 90 215Z"/>`,
+          ()=>`<path d="M98 140C94 74 206 74 202 140Z"/><path d="M196 100C246 120 250 220 222 300C228 220 210 160 192 128Z"/>`,
+          ()=>`<path d="M97 140C94 74 206 74 203 140Z"/><circle cx="150" cy="62" r="26"/>`,
+          ()=>`<path d="M98 140C94 74 206 74 202 140Z"/>`+[0,1,2,3,4,5,6].map(i=>`<ellipse cx="${208+(i%2?4:-2)}" cy="${150+i*26}" rx="9" ry="15"/>`).join(''),
+          ()=>`<path d="M98 140C94 74 206 74 202 140Z"/>`+[[96,95],[84,120],[78,150],[82,180],[204,95],[216,120],[222,150],[218,180],[120,70],[150,64],[180,70]].map(a=>`<circle cx="${a[0]}" cy="${a[1]}" r="20"/>`).join(''),
+          ()=>`<path d="M98 138C94 76 206 76 202 138Z"/>`,
+          ()=>`<path d="M98 140C94 74 206 74 202 140Z"/><path d="M100 120C60 130 56 210 76 250C80 200 96 160 108 140Z"/><path d="M200 120C240 130 244 210 224 250C220 200 204 160 192 140Z"/>`,
+          ()=>`<path d="M92 140C84 66 216 66 208 140L218 360L82 360Z"/>`];
+          const ar=(d,c,w,da,cap)=>`<path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="${cap||'round'}"${da?` stroke-dasharray="${da}"`:''}/>`;
+          function av(v,c,vb,u=''){
+          const g=k=>C.find(x=>x[0]==k)[4][v[k].c],s=k=>v[k].s;
+          const sk=g('face'),skd=mx(sk,K,.2),skl=mx(sk,W,.28),hc=g('hair'),dc=g('dress'),lp=g('lip'),ec=g('eye'),bc=g('brow'),cc=g('cheek');
+          const d=s('dress'),[sl,sw,pt]=DP[d],rx=c.rx,ry=c.ry,es=c.es,pc=mx(dc,K,.4);
+          let o=`<svg viewBox="${vb||'0 0 300 520'}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMax meet"><defs><radialGradient id="fg${u}" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="${skl}"/><stop offset=".6" stop-color="${sk}"/><stop offset="1" stop-color="${skd}"/></radialGradient><linearGradient id="hg${u}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${mx(hc,W,.25)}"/><stop offset=".5" stop-color="${hc}"/><stop offset="1" stop-color="${mx(hc,K,.35)}"/></linearGradient><linearGradient id="sh${u}"><stop offset="0" stop-color="#000" stop-opacity=".3"/><stop offset=".5" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".3"/></linearGradient><radialGradient id="bl${u}"><stop offset="0" stop-color="${cc}" stop-opacity=".75"/><stop offset="1" stop-color="${cc}" stop-opacity="0"/></radialGradient><radialGradient id="lg${u}"><stop offset="0" stop-color="${mx(lp,W,.25)}"/><stop offset="1" stop-color="${lp}"/></radialGradient><pattern id="pt${u}" width="14" height="14" patternUnits="userSpaceOnUse">${PT[pt](pc)}</pattern></defs><ellipse cx="150" cy="514" rx="80" ry="8" fill="#000" opacity=".25"/><g class="bob">`;
+          o+=`<g fill="url(#hg${u})">${HB[s('hair')]()}</g>`;
+          o+=`<rect x="139" y="188" width="22" height="42" fill="${skd}"/><path d="M112 226Q150 212 188 226L184 262L116 262Z" fill="${sk}"/>`;
+          const L='M112 228Q92 285 96 342',R='M188 228Q208 285 204 342',gv=s('glove'),gc=g('glove');
+          o+=ar(L,sk,13)+ar(R,sk,13);
+          if(gv>1){const q=gv==3?mx(gc,W,.5):gc;o+=ar(L,q,12,'0 60 200','butt')+ar(R,q,12,'0 60 200','butt')}
+          if(sl){const n=(sl==1?45:105)+' 400';o+=ar(L,dc,17,n)+ar(R,dc,17,n)}
+          o+=`<circle cx="96" cy="345" r="8.5" fill="${gv?gc:sk}"/><circle cx="204" cy="345" r="8.5" fill="${gv?gc:sk}"/>`;
+          const wr=s('wrist'),mc=g('wrist');
+          if(wr)[[95,325],[205,325]].forEach(([x,y])=>{o+=wr==1?`<ellipse cx="${x}" cy="${y}" rx="9" ry="3.5" fill="none" stroke="${mc}" stroke-width="2.5"/>`:wr==2?`<ellipse cx="${x}" cy="${y}" rx="9" ry="3.5" fill="none" stroke="${mc}" stroke-width="5"/><ellipse cx="${x}" cy="${y+7}" rx="9" ry="3.5" fill="none" stroke="${mc}" stroke-width="3"/>`:wr==3?`<ellipse cx="${x}" cy="${y}" rx="9" ry="3.5" fill="none" stroke="${mc}" stroke-width="3" stroke-dasharray="3 2"/>`:`<ellipse cx="${x}" cy="${y}" rx="9" ry="3.5" fill="none" stroke="${mc}"/>`+[-6,0,6].map(a=>`<circle cx="${x+a}" cy="${y+3}" r="3.2" fill="#e0245e" stroke="${mc}"/>`).join('')});
+          const tor=sl?'M114 226Q150 213 186 226L180 322L120 322Z':'M116 256Q150 248 184 256L180 322L120 322Z',K2=`M120 320L${150-sw} 484Q150 496 ${150+sw} 484L180 320Z`;
+          o+=`<path d="${tor}" fill="${dc}"/><path d="${tor}" fill="url(#sh${u})"/><path d="${K2}" fill="${dc}"/><path d="${K2}" fill="url(#pt${u})"/><path d="${K2}" fill="url(#sh${u})"/><rect x="120" y="318" width="60" height="7" fill="${GD}"/>`;
+          o+=`<path d="M${150-sw} 484Q150 496 ${150+sw} 484" fill="none" stroke="${GD}" stroke-width="4"/>`;
+          if(d==2)o+=ar('M118 230L184 306',GD,10);
+          if(d==5)o+=ar('M112 228Q150 266 188 228','#b3182b',13)+ar('M112 228Q150 266 188 228',GD,2,'4 3');
+          if(d==3)o+=`<rect x="119" y="306" width="62" height="14" fill="${GD}"/>`;
+          if(d==7)o+=ar('M124 226Q150 276 176 226',GD,7,'2 5');
+          if(sl&&d!=5)o+=ar('M136 222Q150 246 164 222',GD,2);
+          const sh=s('shoe'),sc=g('shoe');
+          [136,164].forEach(x=>{o+=sh==4?`<rect x="${x-10}" y="486" width="20" height="22" rx="6" fill="${sc}"/>`:`<ellipse cx="${x}" cy="502" rx="9" ry="5" fill="${sk}"/>`+(sh==1?`<ellipse cx="${x}" cy="502" rx="12" ry="5" fill="${sc}"/><rect x="${x-9}" y="505" width="3" height="9" fill="${sc}"/>`:sh==2?`<ellipse cx="${x}" cy="502" rx="13" ry="5" fill="${sc}"/>`:sh==3?`<path d="M${x-12} 502Q${x} 494 ${x+12} 502M${x-8} 506L${x+8} 506" fill="none" stroke="${sc}" stroke-width="2"/>`:'')});
+          const nk=s('neck'),nc=g('neck');
+          if(nk==1)o+=`<path d="M126 212Q150 252 174 212" fill="none" stroke="${nc}" stroke-width="2.4"/>`;
+          if(nk==2)o+=[0,1,2,3,4,5,6,7,8].map(i=>{const q=i/8;return`<circle cx="${126+48*q}" cy="${212+20*(1-(2*q-1)**2)}" r="3.6" fill="#fff" stroke="#ccc"/>`}).join('');
+          if(nk==3)o+=`<path d="M124 207Q150 222 176 207" fill="none" stroke="${nc}" stroke-width="5"/>`;
+          if(nk==4)o+=`<path d="M126 212Q150 252 174 212" fill="none" stroke="${nc}" stroke-width="1.8"/><circle cx="150" cy="234" r="6" fill="#e0245e" stroke="${nc}" stroke-width="2"/>`;
+          o+=`<circle cx="${150-rx}" cy="146" r="8" fill="${skd}"/><circle cx="${150+rx}" cy="146" r="8" fill="${skd}"/>`;
+          o+=`<path d="M${150-rx} 138C${150-rx} ${140-ry} ${150+rx} ${140-ry} ${150+rx} 138C${150+rx} 175 165 ${140+ry} 150 ${140+ry}C135 ${140+ry} ${150-rx} 175 ${150-rx} 138Z" fill="url(#fg${u})"/>`;
+          if(s('face')==1)o+=`<ellipse cx="150" cy="104" rx="18" ry="7" fill="#fff" opacity=".22"/><ellipse cx="126" cy="152" rx="10" ry="5" fill="#fff" opacity=".2"/><ellipse cx="174" cy="152" rx="10" ry="5" fill="#fff" opacity=".2"/>`;
+          const cr=[10,14,18][s('cheek')];
+          o+=`<circle cx="124" cy="160" r="${cr}" fill="url(#bl${u})"/><circle cx="176" cy="160" r="${cr}" fill="url(#bl${u})"/><path d="M150 146Q145 160 147 164Q150 166 153 164Q155 160 150 146" fill="${skd}" opacity=".25"/>`;
+          const bw=[2.6,2.6,4.6,1.4][s('brow')],bs=s('brow');
+          [150-es,150+es].forEach((x,i)=>{const dd=i?1:-1,es2=s('eye');
+          o+=`<path d="${bs==0||bs==2?`M${x-11} 126L${x+11} 125`:`M${x-11} 128Q${x} ${bs==1?119:121} ${x+11} 127`}" fill="none" stroke="${bc}" stroke-width="${bw}" stroke-linecap="round"/>`;
+          o+=`<ellipse cx="${x}" cy="${es2==1?133:135}" rx="${es2==1?14:12}" ry="${es2==1?8:6}" fill="${ec}" opacity="${es2==1?.75:.45}"/><ellipse cx="${x}" cy="143" rx="9.5" ry="5.2" fill="#fff"/><circle cx="${x}" cy="143" r="4.4" fill="#3b2316"/><circle cx="${x}" cy="143" r="2" fill="#000"/><circle cx="${x+1.5}" cy="141.5" r="1.1" fill="#fff"/><path d="M${x-10} 143Q${x} 135 ${x+10} 143" fill="none" stroke="#1b1210" stroke-width="2"/>`;
+          if(es2==2)o+=`<path d="M${x+dd*9} 142L${x+dd*17} 136" stroke="#1b1210" stroke-width="2" stroke-linecap="round"/>`;
+          if(es2==3)o+=`<circle cx="${x+dd*4}" cy="133" r="1.4" fill="#fff"/><circle cx="${x-dd*3}" cy="131" r="1" fill="#fff"/>`});
+          const ls=s('lip');
+          o+=`<path d="M137 177Q144 170 150 173Q156 170 163 177Q150 192 137 177Z" fill="${ls==1?`url(#lg${u})`:ls==0?mx(lp,sk,.3):lp}"/>`+(ls==2?`<ellipse cx="150" cy="180" rx="7" ry="2" fill="#fff" opacity=".45"/>`:'');
+          const hs=s('hair');
+          o+=`<path d="${hs==7?'M98 138C94 74 206 74 202 138C192 108 156 96 150 96C140 96 106 108 98 138Z':hs==9?'M98 142C92 62 208 62 202 142C190 108 152 126 150 106C150 126 110 108 98 142Z':'M98 142C92 64 208 64 202 142C196 116 176 96 150 94C124 96 104 116 98 142Z'}" fill="url(#hg${u})"/><ellipse cx="136" cy="84" rx="20" ry="5" fill="#fff" opacity=".15"/>`;
+          const gl=s('glass'),gk=g('glass');
+          if(gl){const G=(x,q)=>gl==1?`<circle cx="${x}" cy="143" r="15"/>`:gl==2?`<ellipse cx="${x}" cy="143" rx="16" ry="11" transform="rotate(${q*-12} ${x} 143)"/>`:gl==3?`<rect x="${x-15}" y="132" width="30" height="22" rx="3"/>`:`<path d="M${x-16} 132Q${x} 128 ${x+16} 132Q${x+12} 156 ${x} 156Q${x-14} 156 ${x-16} 132Z"/>`;
+          o+=`<g fill="${gk}" fill-opacity=".14" stroke="${gk}" stroke-width="2.4">${G(150-es,-1)+G(150+es,1)}<path d="M${150-es+15} 141Q150 136 ${150+es-15} 141" fill="none"/></g>`}
+          const ex=s('extra'),xc=g('extra');
+          if(ex==1)o+=`<g transform="translate(204 342) rotate(-15)"><path d="M0 0L-32 -44Q0 -66 32 -44Z" fill="${xc}"/><path d="M0 0L-18 -56M0 0L0 -60M0 0L18 -56" stroke="${GD}" stroke-width="1.5"/></g>`;
+          if(ex==2)o+=`<path d="M86 352Q96 328 106 352" fill="none" stroke="${xc}" stroke-width="3"/><rect x="78" y="352" width="36" height="26" rx="6" fill="${xc}"/><rect x="92" y="360" width="8" height="6" rx="2" fill="${GD}"/>`;
+          if(ex==3)o+=`<path d="M114 96L124 78L137 92L150 70L163 92L176 78L186 96Z" fill="${GD}" stroke="#fff" stroke-width="1.5"/><circle cx="150" cy="76" r="3" fill="#e0245e"/>`;
+          if(ex==4)o+=`<g transform="translate(184 98)">${[0,72,144,216,288].map(a=>`<ellipse cx="0" cy="-7" rx="4.5" ry="7" fill="${xc}" transform="rotate(${a})"/>`).join('')}<circle r="3" fill="${GD}"/></g>`;
+          if(ex==5)o+=`<circle cx="${150-rx}" cy="160" r="4" fill="#fff" stroke="#bbb"/><circle cx="${150+rx}" cy="160" r="4" fill="#fff" stroke="#bbb"/>`;
+          return o+'</g></svg>'}
+          const mk=i=>{const v={};C.forEach(c=>v[c[0]]={s:0,c:0});v.face.c=CH[i].sk;v.hair={s:CH[i].hs,c:CH[i].hc};v.cheek.s=1;return v};
+          let S,ch=0,bg=0,cat='face';
+          const show=id=>document.querySelectorAll('.s').forEach(e=>e.classList.toggle('on',e.id==id));
+          function back(){if($('#r').classList.contains('on')){$('#r').classList.remove('on');return'ok'}const on=document.querySelector('.s.on').id;if(on=='g')show('c');else if(on=='c')show('t');else return'exit';return'ok'}
+          function start(i){ch=i;S=mk(i);bg=0;cat='face';$('#nm').textContent=CH[i].n;show('g');bn();ui()}
+          function bn(){$('#sg').className='b'+bg;$('#bn').textContent=BGN[bg]}
+          function nb(){bg=(bg+1)%4;bn()}
+          function pick(k,t,i){S[k][t]=i;ui()}
+          function ui(){const c=C.find(x=>x[0]==cat),k=cat;
+          $('#tb').innerHTML=C.map(x=>`<button class="${x[0]==cat?'a':''}" onclick="cat='${x[0]}';ui()">${x[2]}<br>${x[1]}</button>`).join('');
+          $('#cl').innerHTML=c[4].map((h,i)=>`<i class="${S[k].c==i?'a':''}" style="background:${h}" onclick="pick('${k}','c',${i})"></i>`).join('');
+          $('#sl').innerHTML=c[3].map((n,i)=>`<b class="${S[k].s==i?'a':''}" onclick="pick('${k}','s',${i})">${n}${BK.includes(k)&&(k=='dress'||i>0)?`<small>${BR[(i+k.length)%6]}</small>`:''}</b>`).join('');
+          $('#sv').innerHTML=av(S,CH[ch],0,'g')}
+          function judge(){const x=S,pl=k=>C.find(a=>a[0]==k)[4][x[k].c],h=CH[ch],d=x.dress.s;
+          const fits=[[4,0,1],[5,3,0],[1,0,9],[4,0,1],[4,0,5],[5,1,6],[4,1,9],[5,6,8]][d];
+          const n=['neck','wrist','glass','shoe','glove','extra'].filter(k=>x[k].s>0).length;
+          const hl=hd(pl('dress'),pl('lip')),bf=[[5,6,3],[0,8,2,1],[7,1,3,0],[8,4,9,5]][bg];
+          const f=[1-Math.min(1,(hd(pl('lip'),pl('cheek'))*.6+hd(pl('eye'),pl('lip'))*.4)/110),1-Math.min(1,Math.abs(x.face.c-h.sk)/4),(hl<45||(hl>150&&hl<200))?1:.62,fits.includes(x.hair.s)?1:.55,Math.min(1,Math.max(.2,1-Math.abs(n-3.5)/4.5)+(x.neck.s&&x.wrist.s&&x.neck.c==x.wrist.c?.12:0)),bf.includes(x.dress.c)?1:.6];
+          const L=['Warna makeup','Tone kulit','Baju & warna','Gaya rambut','Aksesoris','Latar'],Wt=[.2,.12,.2,.12,.2,.16];
+          const t=Math.max(10,Math.min(100,Math.round(10+90*f.reduce((a,b,i)=>a+b*Wt[i],0))));
+          const tip=['Warna blush, bibir, dan mata kurang selaras. Coba nuansa yang senada.','Warna foundation kurang cocok dengan kulit aslinya. Pilih yang lebih dekat.','Warna baju kurang serasi dengan bibir dan blush. Coba warna lain.','Gaya rambut kurang pas dengan baju daerah ini. Coba sanggul atau kepang.','Aksesoris terlalu sedikit atau berlebihan. Idealnya 3-4 item dengan logam senada.','Baju kurang serasi dengan suasana latar. Coba ganti latar atau warna baju.'][f.indexOf(Math.min(...f))];
+          const gr=t>=90?'Ratu Nusantara 👑':t>=75?'Cantik Memesona 💖':t>=55?'Manis Natural 🌸':'Perlu Dipoles Lagi ✨';
+          $('#rc').innerHTML='<div>Juri SariAI sedang menilai…</div>';$('#r').classList.add('on');
+          setTimeout(()=>{$('#rc').innerHTML=`<div>Nilai ${h.n}</div><div class="sc" id="sn">0</div><b>${gr}</b><div style="margin-top:10px">${f.map((q,i)=>`<div class="br"><span>${L[i]}</span><div><i data-w="${Math.round(q*100)}"></i></div></div>`).join('')}</div><p>${t>=90?'Sempurna! Semua unsur serasi dengan baik.':'Saran juri: '+tip}</p><button class="bt p" onclick="back()">Lanjut Dandan</button><button class="bt" onclick="back();show('c')">Karakter Baru</button>`;
+          setTimeout(()=>document.querySelectorAll('.br i').forEach(e=>e.style.width=e.dataset.w+'%'),50);
+          let c=0;const iv=setInterval(()=>{c=Math.min(t,c+Math.ceil(t/25));$('#sn').textContent=c;if(c>=t)clearInterval(iv)},35)},1400)}
+          $('#tl').innerHTML='SariMakeup'.split('').map((ch,i)=>`<span style="color:${i<4?'#ffb3cf':'#ffe08a'};animation-delay:${i*.12}s">${ch}</span>`).join('');
+          $('#gr').innerHTML=CH.map((c,i)=>`<button class="cd" onclick="start(${i})">${av(mk(i),c,'60 50 180 200','c'+i)}<b>${c.n}</b><small>${c.o}</small></button>`).join('');
+          </script></body></html>
+          EOF
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.7
+
+      - name: Build APK
+        run: gradle assembleDebug --no-daemon
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk SariMakeup.apk
+          gh release create "sm-v${{ github.run_number }}" SariMakeup.apk \
+            --title "SariMakeup (build ${{ github.run_number }})" \
+            --notes "APK siap diinstall. Android 7+."
